@@ -152,8 +152,8 @@
             const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
             console.log('Carregando PDF para idioma:', lang, 'PATH:', pdfPath);
             
-            // Usa parâmetros simples para melhor visualização
-            pdfViewer.src = `${pdfPath}#view=FitH`;
+            // Ajusta zoom para largura da página (page-width)
+            pdfViewer.src = `${pdfPath}#zoom=page-width`;
             
             // Define a bandeira correta no badge
             flagIcon.src = LANGUAGE_FLAGS[lang];
