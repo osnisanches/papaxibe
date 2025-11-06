@@ -6,7 +6,6 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-    
       gtag('config', 'G-BZ4WPM5RHP');
     </script>
     <meta charset="UTF-8">
@@ -30,8 +29,8 @@
             width: 100%;
             height: 100%;
         }
-
-        /* ELIMINA espaçamento entre páginas - ADICIONE ISSO */
+        
+        /* === REGRAS PARA ELIMINAR ESPAÇAMENTO === */
         .pdfViewer .page {
             margin: 0 !important;
             padding: 0 !important;
@@ -44,14 +43,120 @@
             margin: 0 !important;
         }
         
-        /* Remove qualquer padding do container */
         #viewerContainer {
             padding: 0 !important;
         }
         
-        /* Garante que as páginas fiquem coladas */
         .pdfViewer.removePageBorders .page {
             margin: 0 !important;
+        }
+        
+        /* === LOADING SCREEN === */
+        .loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4a7c59;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #4a7c59;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtext {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* === ERROR SCREEN === */
+        .error-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        .error-title {
+            color: #d32f2f;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .error-message {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 25px;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+        
+        .error-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .error-button {
+            background: #4a7c59;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+        
+        .error-button:hover {
+            background: #3a6348;
+        }
+        
+        .error-button.secondary {
+            background: #6c757d;
+        }
+        
+        .error-button.secondary:hover {
+            background: #5a6268;
         }
         
         .floating-badge {
@@ -66,7 +171,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.3);
-            z-index: 1000;
+            z-index: 1001;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
@@ -103,18 +208,45 @@
             height: 20px;
             background: rgba(255,255,255,0.3);
         }
+        
+        /* Esconde o viewer inicialmente */
+        #viewerContainer {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <!-- Badge apenas com ícones (sem texto) -->
+    <!-- Loading Screen -->
+    <div id="loadingContainer" class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Carregando Guia...</div>
+        <div class="loading-subtext" id="loadingSubtext">Isso pode levar alguns segundos</div>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="errorContainer" class="error-container">
+        <div class="error-icon">❌</div>
+        <div class="error-title">Erro ao Carregar PDF</div>
+        <div class="error-message" id="errorMessage">
+            Não foi possível carregar o guia. Verifique sua conexão e tente novamente.
+        </div>
+        <div class="error-buttons">
+            <button class="error-button" onclick="retryLoadPDF()">🔄 Tentar Novamente</button>
+            <button class="error-button secondary" onclick="downloadPDFDirect()">📥 Fazer Download</button>
+            <button class="error-button secondary" onclick="goBack()">↺ Voltar ao Menu</button>
+        </div>
+    </div>
+
+    <!-- Badge flutuante -->
     <div class="floating-badge">
         <img src="" alt="Trocar idioma" class="flag-small" id="flagIcon" onclick="goBack()">
         <div class="separator"></div>
-        <div class="download-icon" onclick="downloadPDF()" title="Baixar PDF">
+        <div class="download-icon" onclick="downloadPDFDirect()" title="Baixar PDF">
             ⬇️
         </div>
     </div>
     
+    <!-- Viewer do PDF -->
     <div id="viewerContainer" class="viewer-container">
         <div id="viewer" class="pdfViewer"></div>
     </div>
@@ -143,53 +275,85 @@
             'es': 'Guia_Papa_Xibe_Espanol.pdf'
         };
 
-        // Utilidades
+        // Variáveis globais
+        let currentPdfViewer = null;
+        let currentLang = null;
 
         function getLanguageFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('lang') || 'pt';
         }
 
-        // Função para baixar o PDF
-        function downloadPDF() {
+        function showLoading() {
+            document.getElementById('loadingContainer').style.display = 'flex';
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('viewerContainer').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'flex';
+            document.getElementById('viewerContainer').style.display = 'none';
+            
+            if (message) {
+                document.getElementById('errorMessage').textContent = message;
+            }
+        }
+
+        function showViewer() {
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('viewerContainer').style.display = 'block';
+        }
+
+        function updateLoadingText(text) {
+            document.getElementById('loadingSubtext').textContent = text;
+        }
+
+        function downloadPDFDirect() {
             const lang = getLanguageFromURL();
             const downloadUrl = PDF_PATHS[lang];
             const fileName = PDF_NAMES[lang];
             
-            // Cria link temporário para download
             const link = document.createElement('a');
             link.href = downloadUrl;
             link.download = fileName;
             link.target = '_blank';
             
-            // Dispara o download
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Feedback opcional
-            alert(`Iniciando download: ${fileName}`);
+        }
+
+        function retryLoadPDF() {
+            setupViewer();
         }
 
         function setupViewer() {
+            showLoading();
+            updateLoadingText('Iniciando carregamento...');
+            
             const lang = getLanguageFromURL();
+            currentLang = lang;
             const flagIcon = document.getElementById('flagIcon');
             const container = document.getElementById('viewerContainer');
-
-            // Caminho do PDF conforme idioma
-            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
-            console.log('Carregando PDF para idioma:', lang, 'PATH:', pdfPath);
 
             // Define a bandeira correta no badge
             flagIcon.src = LANGUAGE_FLAGS[lang];
 
+            // Caminho do PDF conforme idioma
+            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
+            
             // Configuração do worker
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+            updateLoadingText('Configurando visualizador...');
 
             // Inicializa PDF.js viewer
             const eventBus = new pdfjsViewer.EventBus();
             const pdfLinkService = new pdfjsViewer.PDFLinkService({ eventBus });
             const pdfFindController = new pdfjsViewer.PDFFindController({ eventBus, linkService: pdfLinkService });
+            
             const pdfViewer = new pdfjsViewer.PDFViewer({
                 container,
                 eventBus,
@@ -197,26 +361,79 @@
                 findController: pdfFindController,
                 removePageBorders: true
             });
+            
             pdfLinkService.setViewer(pdfViewer);
+            currentPdfViewer = pdfViewer;
 
-            const loadingTask = pdfjsLib.getDocument(pdfPath);
+            updateLoadingText('Baixando PDF...');
+
+            // Timeout para detectar falhas
+            const loadTimeout = setTimeout(() => {
+                showError('O carregamento está demorando mais que o normal. Verifique sua conexão.');
+            }, 15000); // 15 segundos timeout
+
+            const loadingTask = pdfjsLib.getDocument({
+                url: pdfPath,
+                withCredentials: false
+            });
+
             loadingTask.promise.then((pdfDocument) => {
+                clearTimeout(loadTimeout);
+                updateLoadingText('Renderizando páginas...');
+                
                 pdfViewer.setDocument(pdfDocument);
                 pdfLinkService.setDocument(pdfDocument);
+
+                // Aguarda as páginas renderizarem
+                eventBus.on('pagesinit', function () {
+                    pdfViewer.currentScaleValue = 'page-width';
+                    setTimeout(() => {
+                        showViewer();
+                    }, 500);
+                });
+
+            }).catch((error) => {
+                clearTimeout(loadTimeout);
+                console.error('Erro ao carregar PDF:', error);
+                
+                let errorMessage = 'Erro ao carregar o PDF. ';
+                if (error.name === 'MissingPDFException') {
+                    errorMessage += 'Arquivo não encontrado.';
+                } else if (error.name === 'InvalidPDFException') {
+                    errorMessage += 'Arquivo PDF inválido.';
+                } else if (error.message.includes('NetworkError')) {
+                    errorMessage += 'Problema de conexão.';
+                } else {
+                    errorMessage += 'Tente fazer o download diretamente.';
+                }
+                
+                showError(errorMessage);
             });
 
-            eventBus.on('pagesinit', function () {
-                // Ajusta zoom para largura da página
-                pdfViewer.currentScaleValue = 'page-width';
-            });
+            // Monitora progresso de download
+            loadingTask.onProgress = function(progress) {
+                const percent = Math.round((progress.loaded / progress.total) * 100);
+                if (percent < 100) {
+                    updateLoadingText(`Baixando PDF... ${percent}%`);
+                }
+            };
         }
 
         function goBack() {
             window.location.href = 'index.html';
         }
 
+        // Inicializa quando a página carrega
         document.addEventListener('DOMContentLoaded', setupViewer);
+
+        // Adiciona fallback para erro de rede
+        window.addEventListener('online', function() {
+            console.log('Conexão restaurada');
+        });
+
+        window.addEventListener('offline', function() {
+            showError('Você está offline. Verifique sua conexão com a internet.');
+        });
     </script>
 </body>
 </html>
-
