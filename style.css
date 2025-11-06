@@ -1,0 +1,247 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Imagem de fundo */
+.background-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('fundosite.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+}
+
+/* Overlay para melhor legibilidade */
+.background-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.language-selection {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px 25px;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* Container da logo - 20% MAIOR */
+.logo-container {
+    margin-bottom: 25px;
+    padding: 15px;
+}
+
+.logo {
+    max-width: 180px; /* Aumentado de 150px para 180px (20%) */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Título principal */
+.language-selection h1 {
+    color: #2c5530;
+    margin-bottom: 5px;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+/* Subtítulo */
+.language-selection h2 {
+    color: #4a7c59;
+    margin-bottom: 20px;
+    font-size: 15px;
+    font-weight: normal;
+}
+
+.language-selection p {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.flags {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.flag-btn {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border: 2px solid rgba(224, 224, 224, 0.8);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-decoration: none;
+    backdrop-filter: blur(5px);
+}
+
+.flag-btn:hover {
+    border-color: #4a7c59;
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.flag-btn img {
+    width: 28px;
+    height: 18px;
+    margin-right: 15px;
+    border-radius: 2px;
+}
+
+.flag-btn span {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+}
+
+.auto-open {
+    text-align: left;
+    padding: 15px 0 5px 0;
+    border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.auto-open label {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+}
+
+.auto-open input {
+    margin-right: 8px;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .language-selection {
+        padding: 25px 20px;
+    }
+    
+    .logo {
+        max-width: 150px; /* Aumentado proporcionalmente para mobile */
+    }
+    
+    .language-selection h1 {
+        font-size: 24px;
+    }
+    
+    .flag-btn {
+        padding: 12px 16px;
+    }
+}
+
+/* Seção PWA */
+.pwa-section {
+    margin: 25px 0 20px 0;
+    padding: 20px 0;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.pwa-button {
+    background: linear-gradient(135deg, #4a7c59 0%, #3a6348 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(74, 124, 89, 0.3);
+    width: 100%;
+    max-width: 280px;
+}
+
+.pwa-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(74, 124, 89, 0.4);
+    background: linear-gradient(135deg, #5a8c69 0%, #4a7358 100%);
+}
+
+.pwa-instructions {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    font-size: 13px;
+    text-align: left;
+    display: none;
+}
+
+.pwa-steps {
+    margin: 10px 0;
+}
+
+.pwa-step {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.pwa-step strong {
+    color: #4a7c59;
+}
+
+.pwa-note {
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+/* Ícones das instruções */
+.step-icon {
+    margin-right: 8px;
+    font-size: 14px;
+}
+
+/* Para dispositivos que não são móveis */
+.no-mobile-message {
+    color: #666;
+    font-size: 14px;
+    margin-top: 10px;
+}

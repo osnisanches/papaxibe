@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BZ4WPM5RHP"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-BZ4WPM5RHP');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Guia Papa Xibé - COP30</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .viewer-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: white;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .floating-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(74, 124, 89, 0.95);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .floating-badge:hover {
+            background: rgba(74, 124, 89, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .flag-small {
+            width: 24px;
+            height: 18px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .download-icon {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .download-icon:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .separator {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Badge apenas com ícones (sem texto) -->
+    <div class="floating-badge">
+        <img src="" alt="Trocar idioma" class="flag-small" id="flagIcon" onclick="goBack()">
+        <div class="separator"></div>
+        <div class="download-icon" onclick="downloadPDF()" title="Baixar PDF">
+            ⬇️
+        </div>
+    </div>
+    
+    <div class="viewer-container">
+        <iframe id="pdfViewer" src=""></iframe>
+    </div>
+
+    <script>
+        // Mapeamento de idiomas e bandeiras
+        const LANGUAGE_FLAGS = {
+            'pt': 'https://flagcdn.com/w40/br.png',
+            'en': 'https://flagcdn.com/w40/us.png',
+            'es': 'https://flagcdn.com/w40/es.png'
+        };
+
+        // Caminhos locais dos PDFs
+        const PDF_PATHS = {
+            'pt': 'pdf/guia-pt.pdf',
+            'en': 'pdf/guia-en.pdf',
+            'es': 'pdf/guia-es.pdf'
+        };
+
+        const PDF_NAMES = {
+            'pt': 'Guia_Papa_Xibe_Portugues.pdf',
+            'en': 'Guia_Papa_Xibe_English.pdf',
+            'es': 'Guia_Papa_Xibe_Espanol.pdf'
+        };
+
+        // Utilidades
+
+        function getLanguageFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('lang') || 'pt';
+        }
+
+        // Função para baixar o PDF
+        function downloadPDF() {
+            const lang = getLanguageFromURL();
+            const downloadUrl = PDF_PATHS[lang];
+            const fileName = PDF_NAMES[lang];
+            
+            // Cria link temporário para download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = fileName;
+            link.target = '_blank';
+            
+            // Dispara o download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Feedback opcional
+            alert(`Iniciando download: ${fileName}`);
+        }
+
+        function setupViewer() {
+            const lang = getLanguageFromURL();
+            const pdfViewer = document.getElementById('pdfViewer');
+            const flagIcon = document.getElementById('flagIcon');
+            
+            // Carrega o PDF local conforme o idioma
+            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
+            console.log('Carregando PDF para idioma:', lang, 'PATH:', pdfPath);
+            
+            // Usa parâmetros simples para melhor visualização
+            pdfViewer.src = `${pdfPath}#view=FitH`;
+            
+            // Define a bandeira correta no badge
+            flagIcon.src = LANGUAGE_FLAGS[lang];
+        }
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', setupViewer);
+    </script>
+</body>
+</html>

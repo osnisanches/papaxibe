@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BZ4WPM5RHP"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-BZ4WPM5RHP');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia Papa Xibé - COP30</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Meta tags para PWA -->
+    <meta name="theme-color" content="#4a7c59">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="background-image"></div>
+    
+    <div class="container">
+        <div class="language-selection">
+            <!-- Logo centralizada no topo -->
+            <div class="logo-container">
+                <img src="guiacoplogo.png" alt="Guia COP Logo" class="logo">
+            </div>
+            
+            <!-- Texto principal -->
+            <h1>Guia Papa Xibé</h1>
+            <h2>Para visitantes da COP30</h2>
+            <p>Selecione seu idioma / Select your language / Seleccione su idioma</p>
+            
+            <div class="flags">
+                <!-- bandeirinhas -->
+                <a href="viewer.html?lang=pt" class="flag-btn">
+                    <img src="https://flagcdn.com/w40/br.png" alt="Português">
+                    <span>Português</span>
+                </a>
+                
+                <a href="viewer.html?lang=en" class="flag-btn">
+                    <img src="https://flagcdn.com/w40/us.png" alt="English">
+                    <span>English</span>
+                </a>
+                
+                <a href="viewer.html?lang=es" class="flag-btn">
+                    <img src="https://flagcdn.com/w40/es.png" alt="Español">
+                    <span>Español</span>
+                </a>
+            </div>
+
+
+            <div id="pwa-section" class="pwa-section">
+                <button id="pwa-button" class="pwa-button">
+                    📲 Criar Atalho do App
+                </button>
+                <div id="pwa-instructions" class="pwa-instructions">
+                   
+                </div>
+            </div>
+            
+            <!--<div class="auto-open">
+                <label>
+                    <input type="checkbox" id="autoOpen" checked>
+                    Abrir automaticamente na próxima vez
+                </label>
+            </div>
+            -->    
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
