@@ -330,94 +330,96 @@
         }
 
         function setupViewer() {
-            showLoading();
-            updateLoadingText('Iniciando carregamento...');
+    showLoading();
+    updateLoadingText('Iniciando carregamento...');
+    
+    const lang = getLanguageFromURL();
+    currentLang = lang;
+    const flagIcon = document.getElementById('flagIcon');
+    const container = document.getElementById('viewerContainer');
+
+    // Define a bandeira correta no badge
+    flagIcon.src = LANGUAGE_FLAGS[lang];
+
+    // Caminho do PDF conforme idioma
+    const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
+    
+    // Configuração do worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+    updateLoadingText('Configurando visualizador...');
+
+    // Inicializa PDF.js viewer
+    const eventBus = new pdfjsViewer.EventBus();
+    const pdfLinkService = new pdfjsViewer.PDFLinkService({ eventBus });
+    const pdfFindController = new pdfjsViewer.PDFFindController({ eventBus, linkService: pdfLinkService });
+    
+    const pdfViewer = new pdfjsViewer.PDFViewer({
+        container,
+        eventBus,
+        linkService: pdfLinkService,
+        findController: pdfFindController,
+        removePageBorders: true
+    });
+    
+    pdfLinkService.setViewer(pdfViewer);
+    currentPdfViewer = pdfViewer;
+
+    updateLoadingText('Baixando PDF...');
+
+    // Timeout para detectar falhas
+    const loadTimeout = setTimeout(() => {
+        showError('O carregamento está demorando mais que o normal. Verifique sua conexão.');
+    }, 15000); // 15 segundos timeout
+
+    const loadingTask = pdfjsLib.getDocument({
+        url: pdfPath,
+        withCredentials: false
+    });
+
+    loadingTask.promise.then((pdfDocument) => {
+        clearTimeout(loadTimeout);
+        updateLoadingText('Renderizando páginas...');
+        
+        pdfViewer.setDocument(pdfDocument);
+        pdfLinkService.setDocument(pdfDocument);
+
+        // CORREÇÃO 1: Remove o setTimeout desnecessário
+        // CORREÇÃO 2: Garante que o scale seja aplicado IMEDIATAMENTE
+        eventBus.on('pagesinit', function () {
+            // FORÇA largura 100% imediatamente
+            pdfViewer.currentScaleValue = 'page-width';
             
-            const lang = getLanguageFromURL();
-            currentLang = lang;
-            const flagIcon = document.getElementById('flagIcon');
-            const container = document.getElementById('viewerContainer');
+            // Mostra o viewer IMEDIATAMENTE após pagesinit
+            showViewer();
+        });
 
-            // Define a bandeira correta no badge
-            flagIcon.src = LANGUAGE_FLAGS[lang];
-
-            // Caminho do PDF conforme idioma
-            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
-            
-            // Configuração do worker
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-
-            updateLoadingText('Configurando visualizador...');
-
-            // Inicializa PDF.js viewer
-            const eventBus = new pdfjsViewer.EventBus();
-            const pdfLinkService = new pdfjsViewer.PDFLinkService({ eventBus });
-            const pdfFindController = new pdfjsViewer.PDFFindController({ eventBus, linkService: pdfLinkService });
-            
-            const pdfViewer = new pdfjsViewer.PDFViewer({
-                container,
-                eventBus,
-                linkService: pdfLinkService,
-                findController: pdfFindController,
-                removePageBorders: true
-            });
-            
-            pdfLinkService.setViewer(pdfViewer);
-            currentPdfViewer = pdfViewer;
-
-            updateLoadingText('Baixando PDF...');
-
-            // Timeout para detectar falhas
-            const loadTimeout = setTimeout(() => {
-                showError('O carregamento está demorando mais que o normal. Verifique sua conexão.');
-            }, 15000); // 15 segundos timeout
-
-            const loadingTask = pdfjsLib.getDocument({
-                url: pdfPath,
-                withCredentials: false
-            });
-
-            loadingTask.promise.then((pdfDocument) => {
-                clearTimeout(loadTimeout);
-                updateLoadingText('Renderizando páginas...');
-                
-                pdfViewer.setDocument(pdfDocument);
-                pdfLinkService.setDocument(pdfDocument);
-
-                // Aguarda as páginas renderizarem
-                eventBus.on('pagesinit', function () {
-                    pdfViewer.currentScaleValue = 'page-width';
-                    setTimeout(() => {
-                        showViewer();
-                    }, 500);
-                });
-
-            }).catch((error) => {
-                clearTimeout(loadTimeout);
-                console.error('Erro ao carregar PDF:', error);
-                
-                let errorMessage = 'Erro ao carregar o PDF. ';
-                if (error.name === 'MissingPDFException') {
-                    errorMessage += 'Arquivo não encontrado.';
-                } else if (error.name === 'InvalidPDFException') {
-                    errorMessage += 'Arquivo PDF inválido.';
-                } else if (error.message.includes('NetworkError')) {
-                    errorMessage += 'Problema de conexão.';
-                } else {
-                    errorMessage += 'Tente fazer o download diretamente.';
-                }
-                
-                showError(errorMessage);
-            });
-
-            // Monitora progresso de download
-            loadingTask.onProgress = function(progress) {
-                const percent = Math.round((progress.loaded / progress.total) * 100);
-                if (percent < 100) {
-                    updateLoadingText(`Baixando PDF... ${percent}%`);
-                }
-            };
+    }).catch((error) => {
+        clearTimeout(loadTimeout);
+        console.error('Erro ao carregar PDF:', error);
+        
+        let errorMessage = 'Erro ao carregar o PDF. ';
+        if (error.name === 'MissingPDFException') {
+            errorMessage += 'Arquivo não encontrado.';
+        } else if (error.name === 'InvalidPDFException') {
+            errorMessage += 'Arquivo PDF inválido.';
+        } else if (error.message.includes('NetworkError')) {
+            errorMessage += 'Problema de conexão.';
+        } else {
+            errorMessage += 'Tente fazer o download diretamente.';
         }
+        
+        showError(errorMessage);
+    });
+
+    // Monitora progresso de download
+    loadingTask.onProgress = function(progress) {
+        const percent = Math.round((progress.loaded / progress.total) * 100);
+        if (percent < 100) {
+            updateLoadingText(`Baixando PDF... ${percent}%`);
+        }
+    };
+}
 
         function goBack() {
             window.location.href = 'index.html';
@@ -437,3 +439,4 @@
     </script>
 </body>
 </html>
+
