@@ -386,13 +386,28 @@
 
         // CORREÇÃO 1: Remove o setTimeout desnecessário
         // CORREÇÃO 2: Garante que o scale seja aplicado IMEDIATAMENTE
-        eventBus.on('pagesinit', function () {
-            // FORÇA largura 100% imediatamente
-            pdfViewer.currentScaleValue = 'page-width';
+eventBus.on('pagesinit', function () {
+    // FORÇA ocupar 100% da largura da TELA
+    pdfViewer.currentScaleValue = 'page-width';
+    
+    // Garante que está realmente em 100%
+    setTimeout(() => {
+        const container = document.getElementById('viewerContainer');
+        const firstPage = pdfViewer.getPageView(0);
+        
+        if (firstPage) {
+            const pageWidth = firstPage.width;
+            const containerWidth = container.clientWidth;
+            const calculatedScale = containerWidth / pageWidth;
             
-            // Mostra o viewer IMEDIATAMENTE após pagesinit
-            showViewer();
-        });
+            // Aplica o scale calculado para 100% da tela
+            pdfViewer.currentScale = calculatedScale;
+        }
+    }, 100);
+    
+    // Mostra o viewer IMEDIATAMENTE
+    showViewer();
+});
 
     }).catch((error) => {
         clearTimeout(loadTimeout);
@@ -439,4 +454,5 @@
     </script>
 </body>
 </html>
+
 
