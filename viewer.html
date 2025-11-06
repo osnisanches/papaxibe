@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Guia Papa Xibé - COP30</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/web/pdf_viewer.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/pdfjs-dist@3.11.174/web/pdf_viewer.css">
     <style>
         .viewer-container {
             width: 100vw;
@@ -22,14 +22,13 @@
             top: 0;
             left: 0;
             background: white;
+            overflow: auto;
         }
         
-        /* Substitui o iframe pelo container do PDF.js */
-        #viewerContainer {
+        /* Ajuste para o PDF.js ocupar toda a área disponível */
+        #viewer {
             width: 100%;
             height: 100%;
-            overflow: auto;
-            position: relative;
         }
         
         .floating-badge {
@@ -93,46 +92,14 @@
         </div>
     </div>
     
-    <div class="viewer-container" id="viewerContainer"></div>
-    <iframe id="pdf-iframe" style="display:none;width:100vw;height:100vh;border:0;"></iframe>
+    <div id="viewerContainer" class="viewer-container">
+        <div id="viewer" class="pdfViewer"></div>
+    </div>
 
+    <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js"></script>
+    <script src="https://unpkg.com/pdfjs-dist@3.11.174/web/pdf_viewer.js"></script>
     <script>
-        // PDF.js via CDN
-        const PDFJS_VERSION = '4.4.168';
-        const workerCandidates = [
-            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`,
-            `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`,
-            `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`
-        ];
-        const libCandidates = [
-            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`,
-            `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`,
-            `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/build/pdf.min.js`
-        ];
-        const viewerCandidates = [
-            `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/web/pdf_viewer.min.js`,
-            `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf_viewer.min.js`,
-            `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}/web/pdf_viewer.min.js`
-        ];
-
-        async function loadScriptWithFallback(urls) {
-            for (const src of urls) {
-                try {
-                    await new Promise((resolve, reject) => {
-                        const s = document.createElement('script');
-                        s.src = src;
-                        s.onload = resolve;
-                        s.onerror = () => reject(new Error('Erro ao carregar ' + src));
-                        document.head.appendChild(s);
-                    });
-                    return src; // carregado com sucesso
-                } catch (e) {
-                    // tenta próximo
-                }
-            }
-            throw new Error('Falha ao carregar biblioteca PDF.js de todos os provedores');
-        }
-
         // Mapeamento de idiomas e bandeiras
         const LANGUAGE_FLAGS = {
             'pt': 'https://flagcdn.com/w40/br.png',
@@ -181,48 +148,43 @@
             alert(`Iniciando download: ${fileName}`);
         }
 
-        async function setupViewer() {
+        function setupViewer() {
             const lang = getLanguageFromURL();
             const flagIcon = document.getElementById('flagIcon');
-            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
             const container = document.getElementById('viewerContainer');
 
+            // Caminho do PDF conforme idioma
+            const pdfPath = PDF_PATHS[lang] || PDF_PATHS['pt'];
+            console.log('Carregando PDF para idioma:', lang, 'PATH:', pdfPath);
+
+            // Define a bandeira correta no badge
             flagIcon.src = LANGUAGE_FLAGS[lang];
 
-            try {
-                await loadScriptWithFallback(libCandidates);
-                await loadScriptWithFallback(viewerCandidates);
-                const workerSrc = workerCandidates[0];
-                pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-            } catch (e) {
-                const iframe = document.getElementById('pdf-iframe');
-                iframe.style.display = 'block';
-                document.getElementById('viewerContainer').style.display = 'none';
-                const fallbackPath = pdfPath + '#view=FitH&toolbar=0';
-                iframe.src = fallbackPath;
-                return;
-            }
+            // Configuração do worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
+            // Inicializa PDF.js viewer
             const eventBus = new pdfjsViewer.EventBus();
             const pdfLinkService = new pdfjsViewer.PDFLinkService({ eventBus });
             const pdfFindController = new pdfjsViewer.PDFFindController({ eventBus, linkService: pdfLinkService });
-            const viewer = new pdfjsViewer.PDFViewer({
+            const pdfViewer = new pdfjsViewer.PDFViewer({
                 container,
                 eventBus,
                 linkService: pdfLinkService,
                 findController: pdfFindController,
-                enableScripting: true,
-                l10n: pdfjsViewer.NullL10n,
-                textLayerMode: 2
+                removePageBorders: true
             });
-            pdfLinkService.setViewer(viewer);
+            pdfLinkService.setViewer(pdfViewer);
 
-            const doc = await pdfjsLib.getDocument({ url: pdfPath }).promise;
-            viewer.setDocument(doc);
-            pdfLinkService.setDocument(doc, null);
+            const loadingTask = pdfjsLib.getDocument(pdfPath);
+            loadingTask.promise.then((pdfDocument) => {
+                pdfViewer.setDocument(pdfDocument);
+                pdfLinkService.setDocument(pdfDocument);
+            });
 
-            eventBus.on('pagesinit', () => {
-                viewer.currentScaleValue = 'page-width';
+            eventBus.on('pagesinit', function () {
+                // Ajusta zoom para largura da página
+                pdfViewer.currentScaleValue = 'page-width';
             });
         }
 
