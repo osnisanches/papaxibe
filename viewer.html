@@ -31,7 +31,7 @@
             display: none;
         }
         
-        /* VIEWER DO PDF - CORREÇÕES CRÍTICAS */
+        /* VIEWER DO PDF */
         #viewer {
             width: 100%;
             padding: 0;
@@ -42,6 +42,7 @@
             margin: 1px auto !important;
             border: none;
             box-shadow: none;
+            position: relative;
         }
         
         .pdfViewer .canvasWrapper {
@@ -56,14 +57,18 @@
             display: block;
         }
         
-        /* REMOVER TEXTO DE FUNDO */
-        .pdfViewer .page .textLayer {
+        /* CAMADA DE TEXTO (OCULTA) */
+        .textLayer {
             display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
         }
         
-        /* GARANTIR QUE OS LINKS FUNCIONEM */
-        .pdfViewer .page .annotationLayer {
+        /* CAMADA DE ANOTAÇÕES - CRÍTICO PARA LINKS */
+        .annotationLayer {
             display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
             position: absolute;
             top: 0;
             left: 0;
@@ -72,14 +77,15 @@
             pointer-events: auto;
         }
         
-        .pdfViewer .page .annotationLayer section {
+        .annotationLayer section {
             position: absolute;
         }
         
-        .pdfViewer .page .annotationLayer a {
+        .annotationLayer a {
             display: block;
             position: absolute;
             background: transparent;
+            cursor: pointer;
         }
         
         /* LOADING */
@@ -260,8 +266,7 @@
         // Estado da aplicação
         let pdfViewer = null;
         let pdfLinkService = null;
-        let renderedPages = 0;
-        let totalPages = 0;
+        let isFirstPageRendered = false;
 
         // Inicialização
         function init() {
@@ -290,7 +295,6 @@
             pdfjsLib.getDocument(pdfPath).promise
                 .then(pdfDoc => {
                     clearTimeout(loadTimeout);
-                    totalPages = pdfDoc.numPages;
                     setupPDFViewer(pdfDoc, lang);
                 })
                 .catch(error => {
@@ -300,71 +304,81 @@
         }
 
         function setupPDFViewer(pdfDoc, lang) {
-            // Configura o viewer com suporte a links
             const eventBus = new pdfjsViewer.EventBus();
             const container = document.getElementById('viewerContainer');
             
-            // Serviço de links necessário para cliques funcionarem
+            // Configuração completa para interatividade
             pdfLinkService = new pdfjsViewer.PDFLinkService({
                 eventBus: eventBus
+            });
+            
+            const pdfFindController = new pdfjsViewer.PDFFindController({
+                eventBus: eventBus,
+                linkService: pdfLinkService
             });
             
             pdfViewer = new pdfjsViewer.PDFViewer({
                 container: container,
                 eventBus: eventBus,
                 linkService: pdfLinkService,
-                removePageBorders: true // Remove bordas extras
+                findController: pdfFindController,
+                removePageBorders: true,
+                textLayerMode: 0, // DESABILITA camada de texto
+                annotationMode: 2 // HABILITA camada de anotações
             });
             
             pdfLinkService.setViewer(pdfViewer);
             pdfViewer.setDocument(pdfDoc);
             pdfLinkService.setDocument(pdfDoc, null);
             
-            // Aguarda a renderização
-            eventBus.on('pagesinit', () => {
-                updateLoadingText('Renderizando...');
+            // MOSTRA O PDF IMEDIATAMENTE APÓS A PRIMEIRA PÁGINA
+            eventBus.on('page rendering', (e) => {
+                if (!isFirstPageRendered) {
+                    isFirstPageRendered = true;
+                    
+                    // Ajusta a escala
+                    const firstPage = pdfViewer.getPageView(0);
+                    if (firstPage) {
+                        const scale = Math.min(
+                            (window.innerWidth - 20) / firstPage.width,
+                            (window.innerHeight - 20) / firstPage.height,
+                            1.5
+                        );
+                        pdfViewer.currentScale = scale;
+                    }
+                    
+                    // MOSTRA O VIEWER IMEDIATAMENTE
+                    showPDF();
+                    updateLoadingText('Carregando páginas restantes...');
+                }
+            });
+            
+            // Garante que as anotações fiquem visíveis
+            eventBus.on('pagerendered', (e) => {
+                const pageElement = e.source.div;
                 
-                // Ajusta a escala
-                const firstPage = pdfViewer.getPageView(0);
-                if (firstPage) {
-                    const scale = Math.min(
-                        (window.innerWidth - 20) / firstPage.width,
-                        (window.innerHeight - 20) / firstPage.height,
-                        1.5
-                    );
-                    pdfViewer.currentScale = scale;
+                // Remove completamente a camada de texto se existir
+                const textLayer = pageElement.querySelector('.textLayer');
+                if (textLayer) {
+                    textLayer.remove();
                 }
                 
-                // Monitora renderização
-                eventBus.on('pagerendered', (e) => {
-                    renderedPages++;
-                    updateLoadingText(`Renderizando... ${renderedPages}/${totalPages}`);
-                    
-                    // Remove texto de fundo se existir
-                    const pageElement = e.source.div;
-                    const textLayer = pageElement.querySelector('.textLayer');
-                    if (textLayer) {
-                        textLayer.style.display = 'none';
-                    }
-                    
-                    // Garante que a annotation layer está visível
-                    const annotationLayer = pageElement.querySelector('.annotationLayer');
-                    if (annotationLayer) {
-                        annotationLayer.style.display = 'block';
-                    }
-                    
-                    if (renderedPages >= totalPages) {
-                        setTimeout(showPDF, 300);
-                    }
-                });
-                
-                // Fallback
-                setTimeout(() => {
-                    if (document.getElementById('loadingContainer').style.display !== 'none') {
-                        showPDF();
-                    }
-                }, 5000);
+                // Garante que a camada de anotações está visível e funcional
+                const annotationLayer = pageElement.querySelector('.annotationLayer');
+                if (annotationLayer) {
+                    annotationLayer.style.display = 'block';
+                    annotationLayer.style.opacity = '1';
+                    annotationLayer.style.pointerEvents = 'auto';
+                }
             });
+            
+            // Fallback: se após 3 segundos a primeira página não renderizou
+            setTimeout(() => {
+                if (!isFirstPageRendered) {
+                    isFirstPageRendered = true;
+                    showPDF();
+                }
+            }, 3000);
             
             // Redimensionamento
             window.addEventListener('resize', debounce(() => {
@@ -401,10 +415,12 @@
             document.getElementById('errorContainer').style.display = 'none';
             document.getElementById('viewerContainer').style.display = 'block';
             
-            // Remove qualquer texto de fundo residual
-            document.querySelectorAll('.textLayer').forEach(layer => {
-                layer.style.display = 'none';
-            });
+            // Limpeza final de qualquer texto residual
+            setTimeout(() => {
+                document.querySelectorAll('.textLayer').forEach(layer => {
+                    layer.remove();
+                });
+            }, 100);
         }
 
         function updateLoadingText(text) {
@@ -428,8 +444,7 @@
 
         function retryLoadPDF() {
             const lang = getLanguageFromURL();
-            renderedPages = 0;
-            totalPages = 0;
+            isFirstPageRendered = false;
             loadPDF(lang);
         }
 
@@ -448,7 +463,6 @@
             document.body.removeChild(link);
         }
 
-        // FUNÇÃO PARA RASTREAR DOWNLOADS NO GOOGLE ANALYTICS
         function trackPDFDownload(language) {
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'pdf_download', {
@@ -457,9 +471,6 @@
                     'value': 1
                 });
             }
-            
-            // Fallback alternativo
-            console.log(`Download do PDF em ${language} rastreado`);
         }
 
         function goBack() {
