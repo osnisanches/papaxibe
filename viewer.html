@@ -28,32 +28,58 @@
             left: 0;
             background: #f5f5f5;
             overflow: auto;
-            display: none; /* Inicialmente oculto */
+            display: none;
         }
         
-        /* VIEWER DO PDF */
+        /* VIEWER DO PDF - CORREÇÕES CRÍTICAS */
         #viewer {
             width: 100%;
-            padding: 10px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 0;
         }
         
-        /* PÁGINAS DO PDF */
+        /* PÁGINAS DO PDF - ESPAÇAMENTO DE 1px */
         .pdfViewer .page {
-            margin: 10px auto;
+            margin: 1px auto !important;
             border: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: none;
         }
         
         .pdfViewer .canvasWrapper {
             text-align: center;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         .pdfViewer .page canvas {
             max-width: 100%;
             height: auto;
+            display: block;
+        }
+        
+        /* REMOVER TEXTO DE FUNDO */
+        .pdfViewer .page .textLayer {
+            display: none !important;
+        }
+        
+        /* GARANTIR QUE OS LINKS FUNCIONEM */
+        .pdfViewer .page .annotationLayer {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+        }
+        
+        .pdfViewer .page .annotationLayer section {
+            position: absolute;
+        }
+        
+        .pdfViewer .page .annotationLayer a {
+            display: block;
+            position: absolute;
+            background: transparent;
         }
         
         /* LOADING */
@@ -217,7 +243,7 @@
         <div id="viewer" class="pdfViewer"></div>
     </div>
 
-    <!-- Scripts (carregamento otimizado) -->
+    <!-- Scripts -->
     <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script src="https://unpkg.com/pdfjs-dist@3.11.174/web/pdf_viewer.js"></script>
     
@@ -233,6 +259,7 @@
 
         // Estado da aplicação
         let pdfViewer = null;
+        let pdfLinkService = null;
         let renderedPages = 0;
         let totalPages = 0;
 
@@ -264,7 +291,7 @@
                 .then(pdfDoc => {
                     clearTimeout(loadTimeout);
                     totalPages = pdfDoc.numPages;
-                    setupPDFViewer(pdfDoc);
+                    setupPDFViewer(pdfDoc, lang);
                 })
                 .catch(error => {
                     clearTimeout(loadTimeout);
@@ -272,47 +299,66 @@
                 });
         }
 
-        function setupPDFViewer(pdfDoc) {
-            // Configura o viewer
+        function setupPDFViewer(pdfDoc, lang) {
+            // Configura o viewer com suporte a links
             const eventBus = new pdfjsViewer.EventBus();
             const container = document.getElementById('viewerContainer');
             
-            pdfViewer = new pdfjsViewer.PDFViewer({
-                container: container,
+            // Serviço de links necessário para cliques funcionarem
+            pdfLinkService = new pdfjsViewer.PDFLinkService({
                 eventBus: eventBus
             });
             
-            pdfViewer.setDocument(pdfDoc);
+            pdfViewer = new pdfjsViewer.PDFViewer({
+                container: container,
+                eventBus: eventBus,
+                linkService: pdfLinkService,
+                removePageBorders: true // Remove bordas extras
+            });
             
-            // Aguarda a renderização da primeira página antes de mostrar
+            pdfLinkService.setViewer(pdfViewer);
+            pdfViewer.setDocument(pdfDoc);
+            pdfLinkService.setDocument(pdfDoc, null);
+            
+            // Aguarda a renderização
             eventBus.on('pagesinit', () => {
                 updateLoadingText('Renderizando...');
                 
-                // Ajusta a escala para caber na tela
+                // Ajusta a escala
                 const firstPage = pdfViewer.getPageView(0);
                 if (firstPage) {
                     const scale = Math.min(
-                        (window.innerWidth - 40) / firstPage.width,
-                        (window.innerHeight - 40) / firstPage.height,
-                        1.2 // Limite máximo de zoom
+                        (window.innerWidth - 20) / firstPage.width,
+                        (window.innerHeight - 20) / firstPage.height,
+                        1.5
                     );
                     pdfViewer.currentScale = scale;
                 }
                 
-                // Monitora o progresso de renderização
+                // Monitora renderização
                 eventBus.on('pagerendered', (e) => {
                     renderedPages++;
-                    
-                    // Atualiza o texto de loading
                     updateLoadingText(`Renderizando... ${renderedPages}/${totalPages}`);
                     
-                    // Quando todas as páginas estiverem renderizadas, mostra o PDF
+                    // Remove texto de fundo se existir
+                    const pageElement = e.source.div;
+                    const textLayer = pageElement.querySelector('.textLayer');
+                    if (textLayer) {
+                        textLayer.style.display = 'none';
+                    }
+                    
+                    // Garante que a annotation layer está visível
+                    const annotationLayer = pageElement.querySelector('.annotationLayer');
+                    if (annotationLayer) {
+                        annotationLayer.style.display = 'block';
+                    }
+                    
                     if (renderedPages >= totalPages) {
-                        setTimeout(showPDF, 300); // Pequeno delay para suavizar a transição
+                        setTimeout(showPDF, 300);
                     }
                 });
                 
-                // Fallback: se após 5 segundos não renderizou tudo, mostra mesmo assim
+                // Fallback
                 setTimeout(() => {
                     if (document.getElementById('loadingContainer').style.display !== 'none') {
                         showPDF();
@@ -320,14 +366,14 @@
                 }, 5000);
             });
             
-            // Redimensionamento responsivo
+            // Redimensionamento
             window.addEventListener('resize', debounce(() => {
                 if (pdfViewer && pdfViewer.getPageView(0)) {
                     const firstPage = pdfViewer.getPageView(0);
                     const scale = Math.min(
-                        (window.innerWidth - 40) / firstPage.width,
-                        (window.innerHeight - 40) / firstPage.height,
-                        1.2
+                        (window.innerWidth - 20) / firstPage.width,
+                        (window.innerHeight - 20) / firstPage.height,
+                        1.5
                     );
                     pdfViewer.currentScale = scale;
                 }
@@ -354,6 +400,11 @@
             document.getElementById('loadingContainer').style.display = 'none';
             document.getElementById('errorContainer').style.display = 'none';
             document.getElementById('viewerContainer').style.display = 'block';
+            
+            // Remove qualquer texto de fundo residual
+            document.querySelectorAll('.textLayer').forEach(layer => {
+                layer.style.display = 'none';
+            });
         }
 
         function updateLoadingText(text) {
@@ -386,6 +437,9 @@
             const lang = getLanguageFromURL();
             const pdfConfig = CONFIG.pdfs[lang];
             
+            // Rastrear download no Google Analytics
+            trackPDFDownload(lang);
+            
             const link = document.createElement('a');
             link.href = pdfConfig.path;
             link.download = pdfConfig.name;
@@ -394,11 +448,24 @@
             document.body.removeChild(link);
         }
 
+        // FUNÇÃO PARA RASTREAR DOWNLOADS NO GOOGLE ANALYTICS
+        function trackPDFDownload(language) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'pdf_download', {
+                    'event_category': 'download',
+                    'event_label': `PDF_${language.toUpperCase()}`,
+                    'value': 1
+                });
+            }
+            
+            // Fallback alternativo
+            console.log(`Download do PDF em ${language} rastreado`);
+        }
+
         function goBack() {
             window.location.href = 'index.html';
         }
 
-        // Utilitário para debounce
         function debounce(func, wait) {
             let timeout;
             return function executedFunction(...args) {
